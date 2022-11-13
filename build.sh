@@ -6,7 +6,7 @@
 # Dependencies include: build-essential libncurses5 libncurses-dev cmake zlib1g-dev
 set -e # exit on first error
 
-jobs=20
+jobs=4
 
 #########
 # VARs and Links
@@ -134,24 +134,24 @@ OSDisplayName=""
 #######
 if [[ $sysOS == "Darwin" ]]
 then
-    if [[ "$arch" == "arm64" ]]
+    if [[ "$arch" == "arm64" ]] 
     then
-        urlZ3="$MacArmZ3"
+        urlZ3="$MacArmZ3" 
         urlLLVM="llvm does not have osx arm pre-built libs"
         OSDisplayName="macOS arm64"
-    else
+    else 
         urlZ3="$MacZ3"
         urlLLVM="$MacLLVM"
         OSDisplayName="macOS x86"
     fi
 elif [[ $sysOS == "Linux" ]]
 then
-    if [[ "$arch" == "aarch64" ]]
+    if [[ "$arch" == "aarch64" ]] 
     then
-        urlLLVM="$UbuntuArmLLVM"
+        urlLLVM="$UbuntuArmLLVM" 
         urlZ3="z3 does not have x86 arm pre-built libs"
         OSDisplayName="Ubuntu arm64"
-    else
+    else 
         urlLLVM="$UbuntuLLVM"
         urlZ3="$UbuntuZ3"
         OSDisplayName="Ubuntu x86"
