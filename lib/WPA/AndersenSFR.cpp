@@ -141,7 +141,7 @@ void AndersenSFR::fieldExpand(NodeSet& initials, s32_t offset, NodeBS& strides, 
             else
             {
                 assert(false && "Not an object node!!");
-                initOffset = 0;
+                abort();
             }
 
             Set<s32_t> offsets;
