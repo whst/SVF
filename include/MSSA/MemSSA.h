@@ -324,9 +324,9 @@ public:
     {
         if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(inst))
         {
-            bool has_mu = load2MuSetMap.count(load) != 0;
-            assert(has_mu && "not associated with mem region!");
-            return has_mu;
+            bool hasMu = load2MuSetMap.count(load) != 0;
+            assert(hasMu && "not associated with mem region!");
+            return hasMu;
         }
         else
             return false;
