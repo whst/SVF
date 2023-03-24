@@ -59,10 +59,14 @@ inline const Function* getDefFunForMultipleModule(const Function* fun)
 {
     if (fun == nullptr)
         return nullptr;
-    LLVMModuleSet* llvmModuleset = LLVMModuleSet::getLLVMModuleSet();
-    if (fun->isDeclaration() && llvmModuleset->hasDefinition(fun))
-        fun = LLVMModuleSet::getLLVMModuleSet()->getDefinition(fun);
-    return fun;
+
+    const Function* def;
+
+    return (fun->isDeclaration() &&
+            (def = LLVMModuleSet::getLLVMModuleSet()->tryGetDefinition(fun)) !=
+                nullptr)
+               ? def
+               : fun;
 }
 
 /// Return LLVM callsite given a value

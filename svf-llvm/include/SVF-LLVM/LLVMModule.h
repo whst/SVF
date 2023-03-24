@@ -142,45 +142,75 @@ public:
     // Dump modules to files
     void dumpModulesToFile(const std::string suffix);
 
+    void fillValueAttrs();
+
     inline void addFunctionMap(const Function* func, SVFFunction* svfFunc)
     {
         LLVMFunc2SVFFunc[func] = svfFunc;
-        setValueAttr(func,svfFunc);
     }
     inline void addBasicBlockMap(const BasicBlock* bb, SVFBasicBlock* svfBB)
     {
         LLVMBB2SVFBB[bb] = svfBB;
-        setValueAttr(bb,svfBB);
     }
-    inline void addInstructionMap(const Instruction* inst, SVFInstruction* svfInst)
+    inline void addInstructionMap(const Instruction* inst,
+                                  SVFInstruction* svfInst)
     {
-        LLVMInst2SVFInst[inst] = svfInst;
-        setValueAttr(inst,svfInst);
+        auto p = LLVMInst2SVFInst.emplace(inst, svfInst);
+        if (!p.second) {
+            auto old = p.first->second;
+            if (old != svfInst) {
+                assert(false && "Instruction already mapped to a different SVFInstruction");
+            } else {
+                fprintf(stderr, "Dump same inst, OK\n");
+            }
+        } else {
+                fprintf(stderr, "OK new insert Inst llvm %p, SVF %p\n", inst, svfInst);
+        }
+        //LLVMInst2SVFInst[inst] = svfInst;
     }
     inline void addArgumentMap(const Argument* arg, SVFArgument* svfArg)
     {
         LLVMArgument2SVFArgument[arg] = svfArg;
-        setValueAttr(arg,svfArg);
     }
-    inline void addGlobalValueMap(const GlobalValue* glob, SVFGlobalValue* svfglob)
+    inline void addGlobalValueMap(const GlobalValue* glob,
+                                  SVFGlobalValue* svfglob)
     {
         LLVMConst2SVFConst[glob] = svfglob;
-        setValueAttr(glob,svfglob);
     }
-    inline void addConstantDataMap(const ConstantData* cd, SVFConstantData* svfcd)
+    inline void addConstantDataMap(const ConstantData* cd,
+                                   SVFConstantData* svfcd)
     {
-        LLVMConst2SVFConst[cd] = svfcd;
-        setValueAttr(cd,svfcd);
+        auto it = LLVMConst2SVFConst.emplace(cd, svfcd);
+        if (!it.second) {
+            auto old = it.first->second;
+            if (old != svfcd) {
+                assert(false && "ConstantData already mapped to a different SVFConstantData");
+            } else {
+                fprintf(stderr, "Dump same ConstantData, OK\n");
+            }
+        } else {
+                fprintf(stderr, "OK new insert ConstantData llvm %p, SVF %p\n", cd, svfcd);
+        }
+        //LLVMConst2SVFConst[cd] = svfcd;
     }
     inline void addOtherConstantMap(const Constant* cons, SVFConstant* svfcons)
     {
-        LLVMConst2SVFConst[cons] = svfcons;
-        setValueAttr(cons,svfcons);
+        auto it = LLVMConst2SVFConst.emplace(cons, svfcons);
+        if (!it.second) {
+            auto old = it.first->second;
+            if (old != svfcons) {
+                assert(false && "Constant already mapped to a different SVFConstant");
+            } else {
+                fprintf(stderr, "Dump same Constant, OK\n");
+            }
+        } else {
+                fprintf(stderr, "OK new insert Constant llvm %p, SVF %p\n", cons, svfcons);
+        }
+        //LLVMConst2SVFConst[cons] = svfcons;
     }
     inline void addOtherValueMap(const Value* ov, SVFOtherValue* svfov)
     {
         LLVMValue2SVFOtherValue[ov] = svfov;
-        setValueAttr(ov,svfov);
     }
 
     SVFValue* getSVFValue(const Value* value);
@@ -188,14 +218,33 @@ public:
     const Value* getLLVMValue(const SVFValue* value) const
     {
         SVFValue2LLVMValueMap::const_iterator it = SVFValue2LLVMValue.find(value);
-        assert(it!=SVFValue2LLVMValue.end() && "can't find corresponding llvm value!");
+        if (it == SVFValue2LLVMValue.end())
+        {
+            fprintf(stderr, "SVFValue %p not found! k=%lld\n", value, value->getKind());
+            assert(false);
+            abort();
+        }
+        //assert(it!=SVFValue2LLVMValue.end() && "can't find corresponding llvm value!");
         return it->second;
     }
 
     inline SVFFunction* getSVFFunction(const Function* fun) const
     {
         LLVMFun2SVFFunMap::const_iterator it = LLVMFunc2SVFFunc.find(fun);
-        assert(it!=LLVMFunc2SVFFunc.end() && "SVF Function not found!");
+        if (it == LLVMFunc2SVFFunc.end())
+        {
+            for (auto p : LLVMFunc2SVFFunc)
+            {
+                auto f= p.first;
+                auto x = f->getName().str();
+                std::printf("Key: [%s]@%p\n", x.c_str(), f);
+            }
+
+            std::cerr << "llvm::Function " << fun->getName().str()<< " "<< (void*)fun << " not found!"; //TODO: remove this
+
+            abort();
+        }
+        assert(it != LLVMFunc2SVFFunc.end() && "SVF Function not found!");
         return it->second;
     }
 
@@ -250,19 +299,28 @@ public:
         return nullptr;
     }
 
-    bool hasDefinition(const Function* fun) const
+    const Function* tryGetDefinition(const Function* fun) const
     {
         assert(fun->isDeclaration() && "not a function declaration?");
-        FunDeclToDefMapTy::const_iterator it = FunDeclToDefMap.find(fun);
-        return it != FunDeclToDefMap.end();
+        auto it = FunDeclToDefMap.find(fun);
+        return it == FunDeclToDefMap.end() ? nullptr : it->second;
+    }
+
+    bool hasDefinition(const Function* fun) const
+    {
+        return tryGetDefinition(fun) != nullptr;
     }
 
     const Function* getDefinition(const Function* fun) const
     {
-        assert(fun->isDeclaration() && "not a function declaration?");
-        FunDeclToDefMapTy::const_iterator it = FunDeclToDefMap.find(fun);
-        assert(it != FunDeclToDefMap.end() && "has no definition?");
-        return it->second;
+        const Function* def = tryGetDefinition(fun);
+        // if (def == nullptr)
+        // {
+        //     std::cerr << "Function " << fun->getName().str() << " has no definition\n";
+        //     abort();
+        // }
+        assert(def && "Function has no definition?");
+        return def;
     }
 
     bool hasDeclaration(const Function* fun) const

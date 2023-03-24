@@ -62,6 +62,7 @@ int main(int argc, char** argv)
     SVFIR* pag = builder.build();
 
     WPAPass wpa;
+    //(void)((long)&pag == (long)&wpa);
     wpa.runOnModule(pag);
 
     delete[] arg_value;

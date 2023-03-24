@@ -156,10 +156,11 @@ void LLVMModuleSet::build()
 
 void LLVMModuleSet::createSVFDataStructure()
 {
+    //std::cout  << "mode.size" << modules.size() << "\n";//TODO: remove
 
     for (const Module& mod : modules)
     {
-        /// Function
+        std::cout << "Handling Module: " << mod.getModuleIdentifier() << "\n";//TODO: remove
         for (const Function& func : mod.functions())
         {
             SVFFunction* svfFunc = new SVFFunction(
@@ -169,6 +170,8 @@ void LLVMModuleSet::createSVFDataStructure()
                 func.isDeclaration(), LLVMUtil::isIntrinsicFun(&func),
                 func.hasAddressTaken(), func.isVarArg(), new SVFLoopAndDomInfo);
             svfModule->addFunctionSet(svfFunc);
+            auto x= func.getName().str();
+            std::printf("\t%s %s @ %p\n", (func.isDeclaration() ? "dec" : "fun"),x.c_str(),   &func);//TODO: remove
             addFunctionMap(&func, svfFunc);
 
             for (const Argument& arg : func.args())
@@ -235,6 +238,8 @@ void LLVMModuleSet::createSVFDataStructure()
             addGlobalValueMap(&alias, svfalias);
         }
     }
+
+    fillValueAttrs(); // Call this after all SVF data structures are created
 }
 
 void LLVMModuleSet::initSVFFunction()
@@ -799,6 +804,26 @@ void LLVMModuleSet::dumpModulesToFile(const std::string suffix)
 
         OS.flush();
     }
+}
+
+
+void LLVMModuleSet::fillValueAttrs()
+{
+#define FILL(map)                                                              \
+    {                                                                          \
+        fprintf(stderr, "Filling %s \n", #map);                                \
+        for (auto _kv : map)                                                   \
+            setValueAttr(_kv.first, _kv.second);                               \
+    }
+
+    FILL(LLVMFunc2SVFFunc);
+    FILL(LLVMBB2SVFBB);
+    FILL(LLVMInst2SVFInst);
+    FILL(LLVMArgument2SVFArgument);
+    FILL(LLVMConst2SVFConst);
+    FILL(LLVMValue2SVFOtherValue);
+
+#undef FILL
 }
 
 void LLVMModuleSet::setValueAttr(const Value* val, SVFValue* svfvalue)

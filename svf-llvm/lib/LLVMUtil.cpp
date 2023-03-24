@@ -104,36 +104,30 @@ void LLVMUtil::getFunReachableBBs (const Function* fun, std::vector<const SVFBas
 /*!
  * Return true if the function has a return instruction reachable from function entry
  */
-bool LLVMUtil::functionDoesNotRet (const Function*  fun)
+bool LLVMUtil::functionDoesNotRet(const Function* fun)
 {
     const SVFFunction* svffun = LLVMModuleSet::getLLVMModuleSet()->getSVFFunction(fun);
     if (SVFUtil::isExtCall(svffun))
     {
         return fun->getReturnType()->isVoidTy();
     }
-    std::vector<const BasicBlock*> bbVec;
+    std::vector<const BasicBlock*> bbWorkList;
     Set<const BasicBlock*> visited;
-    bbVec.push_back(&fun->getEntryBlock());
-    while(!bbVec.empty())
+    bbWorkList.push_back(&fun->getEntryBlock());
+    while (!bbWorkList.empty())
     {
-        const BasicBlock* bb = bbVec.back();
-        bbVec.pop_back();
-        for (BasicBlock::const_iterator it = bb->begin(), eit = bb->end();
-                it != eit; ++it)
-        {
-            if(SVFUtil::isa<ReturnInst>(*it))
-                return false;
-        }
+        const BasicBlock* bb = bbWorkList.back();
+        bbWorkList.pop_back();
 
-        for (succ_const_iterator sit = succ_begin(bb), esit = succ_end(bb);
-                sit != esit; ++sit)
+        if (std::any_of(bb->begin(), bb->end(), [](const Instruction& inst) {
+                return SVFUtil::isa<ReturnInst>(inst);
+            }))
+            return false;
+
+        for (const BasicBlock* succbb : successors(bb))
         {
-            const BasicBlock* succbb = (*sit);
-            if(visited.find(succbb)==visited.end())
-                visited.insert(succbb);
-            else
-                continue;
-            bbVec.push_back(succbb);
+            if (visited.insert(succbb).second)
+                bbWorkList.push_back(succbb);
         }
     }
     return true;
@@ -142,9 +136,9 @@ bool LLVMUtil::functionDoesNotRet (const Function*  fun)
 /*!
  * Return true if this is a function without any possible caller
  */
-bool LLVMUtil::isUncalledFunction (const Function*  fun)
+bool LLVMUtil::isUncalledFunction(const Function* fun)
 {
-    if(fun->hasAddressTaken())
+    if (fun->hasAddressTaken())
         return false;
     if (LLVMUtil::isProgEntryFunction(fun))
         return false;
