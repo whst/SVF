@@ -480,6 +480,7 @@ cJSON* SVFIRWriter::contentToJson(const SVFType* type)
     JSON_WRITE_FIELD(root, type, isSingleValTy);
     JSON_WRITE_FIELD(root, type, getPointerToTy);
     JSON_WRITE_FIELD(root, type, typeinfo);
+    jsonAddStringToObject(root, "toString", strToCStr(type->toString()));
     return root;
 }
 
@@ -535,6 +536,7 @@ cJSON* SVFIRWriter::contentToJson(const SVFValue* value)
     JSON_WRITE_FIELD(root, value, ptrInUncalledFun);
     JSON_WRITE_FIELD(root, value, constDataOrAggData);
     JSON_WRITE_FIELD(root, value, sourceLoc);
+    jsonAddStringToObject(root, "toString", strToCStr(value->toString()));
     return root;
 }
 
@@ -1026,6 +1028,12 @@ const char* SVFIRWriter::numToStr(size_t n)
     return numToStrMap.emplace_hint(it, n, std::to_string(n))->second.c_str();
 }
 
+const char* SVFIRWriter::strToCStr(std::string&& str)
+{
+    auto it = strPool.insert(std::move(str)).first;
+    return it->c_str();
+}
+
 SVFIRWriter::autoCStr SVFIRWriter::generateJsonString()
 {
     autoJSON object = generateJson();
@@ -1071,11 +1079,13 @@ SVFIRWriter::autoJSON SVFIRWriter::generateJson()
 
 cJSON* SVFIRWriter::toJson(const SVFType* type)
 {
+    return jsonCreateString(strToCStr("T" + std::to_string(svfModuleWriter.getSVFTypeID(type))));
     return jsonCreateIndex(svfModuleWriter.getSVFTypeID(type));
 }
 
 cJSON* SVFIRWriter::toJson(const SVFValue* value)
 {
+    return jsonCreateString(strToCStr("V"+std::to_string(svfModuleWriter.getSVFValueID(value))));
     return jsonCreateIndex(svfModuleWriter.getSVFValueID(value));
 }
 
@@ -1132,12 +1142,14 @@ cJSON* SVFIRWriter::toJson(const ICFG* icfg)
 cJSON* SVFIRWriter::toJson(const ICFGNode* node)
 {
     assert(node && "ICFGNode is null!");
+    return jsonCreateString(strToCStr("cfgN"+std::to_string(node->getId())));
     return jsonCreateIndex(node->getId());
 }
 
 cJSON* SVFIRWriter::toJson(const ICFGEdge* edge)
 {
     assert(edge && "ICFGNode is null!");
+    return jsonCreateString(strToCStr("cfgE"+std::to_string(icfgWriter.getEdgeID(edge))));
     return jsonCreateIndex(icfgWriter.getEdgeID(edge));
 }
 
@@ -1171,11 +1183,13 @@ cJSON* SVFIRWriter::toJson(const CHGraph* graph)
 
 cJSON* SVFIRWriter::toJson(const CHNode* node)
 {
+    return jsonCreateString(strToCStr("chN"+std::to_string(node->getId())));
     return jsonCreateIndex(node->getId());
 }
 
 cJSON* SVFIRWriter::toJson(const CHEdge* edge)
 {
+    return jsonCreateString(strToCStr("chE"+std::to_string(chgWriter.getEdgeID(edge))));
     return jsonCreateIndex(chgWriter.getEdgeID(edge));
 }
 
@@ -1186,6 +1200,7 @@ cJSON* SVFIRWriter::toJson(const CallSite& cs)
 
 cJSON* SVFIRWriter::toJson(const SVFLoop* loop)
 {
+    return jsonCreateString(strToCStr("lp"+std::to_string(icfgWriter.getSvfLoopID(loop))));
     return jsonCreateIndex(icfgWriter.getSvfLoopID(loop));
 }
 
@@ -1228,6 +1243,7 @@ cJSON* SVFIRWriter::toJson(const ObjTypeInfo* objTypeInfo)
 
 cJSON* SVFIRWriter::toJson(const MemObj* memObj)
 {
+    return jsonCreateString(strToCStr("mo"+std::to_string(memObj->getId())));
     return jsonCreateIndex(memObj->getId());
 }
 
@@ -1246,6 +1262,7 @@ cJSON* SVFIRWriter::toJson(const SVFLoopAndDomInfo* ldInfo)
 
 cJSON* SVFIRWriter::toJson(const StInfo* stInfo)
 {
+    return jsonCreateString(strToCStr("S" + std::to_string(svfModuleWriter.getStInfoID(stInfo))));
     return jsonCreateIndex(svfModuleWriter.getStInfoID(stInfo));
 }
 
@@ -1314,12 +1331,14 @@ cJSON* SVFIRWriter::toJson(const SVFModule* module)
     for (const SVFType* svfType : svfModuleWriter.svfTypePool)
     {
         cJSON* svfTypeObj = virtToJson(svfType);
+        jsonAddItemToObject(svfTypeObj, "Tid", toJson(svfType));
         jsonAddItemToArray(allSVFType, svfTypeObj);
     }
 
     for (const StInfo* stInfo : svfModuleWriter.stInfoPool)
     {
         cJSON* stInfoObj = contentToJson(stInfo);
+        jsonAddItemToObject(stInfoObj, "Iid", toJson(stInfo));
         jsonAddItemToArray(allStInfo, stInfoObj);
     }
 
@@ -1340,6 +1359,7 @@ cJSON* SVFIRWriter::toJson(const SVFModule* module)
     for (size_t i = 1; i <= svfModuleWriter.sizeSVFValuePool(); ++i)
     {
         cJSON* value = virtToJson(svfModuleWriter.getSVFValuePtr(i));
+        jsonAddItemToObject(value, "Vid", toJson(svfModuleWriter.getSVFValuePtr(i)));
         jsonAddItemToArray(allSVFValue, value);
     }
 

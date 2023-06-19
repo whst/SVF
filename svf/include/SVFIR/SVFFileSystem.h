@@ -387,6 +387,7 @@ private:
     IRGraphWriter irGraphWriter;
 
     OrderedMap<size_t, std::string> numToStrMap;
+    OrderedSet<std::string> strPool;
 
 public:
     using autoJSON = std::unique_ptr<cJSON, decltype(&cJSON_Delete)>;
@@ -404,6 +405,7 @@ private:
     autoCStr generateJsonString();
 
     const char* numToStr(size_t n);
+    const char* strToCStr(std::string&& str);
 
     cJSON* toJson(const NodeIDAllocator* nodeIDAllocator);
     cJSON* toJson(const SymbolTableInfo* symTable);
